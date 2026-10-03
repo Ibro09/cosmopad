@@ -8,7 +8,7 @@
     "api": "node -e \"process.env.PORT='3002'; import('./server.js').then(({ startServer }) => startServer())\"",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js",
+    "start": "node -e \"import('./server.js').then(({ startServer }) => startServer())\"",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "tsc --noEmit"
   },

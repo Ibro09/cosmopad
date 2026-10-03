@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express from "express";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { MongoClient, ObjectId } from "mongodb";
 import {
   createPublicClient,
@@ -614,10 +613,3 @@ export const startServer = async () => {
 };
 
 export { app };
-
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
-  void startServer();
-}
