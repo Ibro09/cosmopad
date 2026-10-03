@@ -1,0 +1,6 @@
+{
+  "name": "OrbiX",
+  "description": "Acquiring verifiable stakes, warrants, and economic rights in OrbiX reusable rocket infrastructure, wrapped into liquid onchain products on Robinhood Chain.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
