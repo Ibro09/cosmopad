@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { MongoClient, ObjectId } from "mongodb";
 import {
   createPublicClient,
@@ -36,10 +37,44 @@ const chainClient = createPublicClient({
   transport: http(),
 });
 const mongoClient = process.env.MONGODB_URI
-  ? new MongoClient(process.env.MONGODB_URI)
+  ? new MongoClient(process.env.MONGODB_URI, {
+      connectTimeoutMS: 10_000,
+      serverSelectionTimeoutMS: 10_000,
+    })
   : undefined;
 let database;
+let databaseConnection;
 app.use(express.json({ limit: "100kb" }));
+
+export const ensureDatabase = async () => {
+  if (!mongoClient) return false;
+  if (database) return true;
+  if (!databaseConnection) {
+    databaseConnection = mongoClient
+      .connect()
+      .then(async (client) => {
+        const connectedDatabase = client.db(
+          process.env.MONGODB_DB || "cosmopad",
+        );
+        await Promise.all([
+          connectedDatabase
+            .collection("tokenLaunches")
+            .createIndex({ token: 1 }, { unique: true }),
+          connectedDatabase
+            .collection("tokenLaunches")
+            .createIndex({ owner: 1, launchedAt: -1 }),
+        ]);
+        database = connectedDatabase;
+        console.log("MongoDB connected.");
+      })
+      .catch((error) => {
+        databaseConnection = undefined;
+        console.error("MongoDB connection failed:", error);
+      });
+  }
+  await databaseConnection;
+  return Boolean(database);
+};
 
 const requireDatabase = (response) => {
   if (database) return true;
@@ -548,36 +583,31 @@ app.get("/api/pons-launches", async (request, response) => {
   }
 });
 
+app.use("/api", (_request, response) => {
+  response.status(404).json({ error: "API route not found." });
+});
+
 app.use(express.static(distPath));
 app.get("*", (_request, response) => {
   response.sendFile(path.join(distPath, "index.html"));
 });
 
-if (mongoClient) {
-  void mongoClient
-    .connect()
-    .then(async (client) => {
-      const connectedDatabase = client.db(
-        process.env.MONGODB_DB || "cosmopad",
-      );
-      await Promise.all([
-        connectedDatabase
-          .collection("tokenLaunches")
-          .createIndex({ token: 1 }, { unique: true }),
-        connectedDatabase
-          .collection("tokenLaunches")
-          .createIndex({ owner: 1, launchedAt: -1 }),
-      ]);
-      database = connectedDatabase;
-      console.log("MongoDB connected.");
-    })
-    .catch((error) => {
-      console.error("MongoDB connection failed:", error);
-    });
-} else {
+if (!mongoClient) {
   console.warn("MongoDB is not configured; token launches cannot be saved.");
 }
 
-app.listen(port, () => {
-  console.log(`CosmoPad is listening on port ${port}.`);
-});
+export const startServer = async () => {
+  await ensureDatabase();
+  return app.listen(port, () => {
+    console.log(`CosmoPad is listening on port ${port}.`);
+  });
+};
+
+export { app };
+
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  void startServer();
+}

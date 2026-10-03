@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm:api\" \"vite --port=3000 --host=0.0.0.0\"",
-    "api": "node -e \"process.env.PORT='3002'; import('./server.js')\"",
+    "api": "node -e \"process.env.PORT='3002'; import('./server.js').then(({ startServer }) => startServer())\"",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
@@ -23,6 +23,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "serverless-http": "^4.0.0",
     "viem": "^2.57.2",
     "vite": "^6.2.3"
   },
