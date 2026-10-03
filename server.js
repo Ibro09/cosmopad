@@ -94,6 +94,16 @@ const getCreatorFeeRecipient = () => {
   return getAddress(configuredAddress);
 };
 
+app.get(["/health", "/api/health"], (_request, response) => {
+  response
+    .set("Cache-Control", "no-store")
+    .json({
+      status: "ok",
+      service: "cosmopad-api",
+      timestamp: new Date().toISOString(),
+    });
+});
+
 app.get("/api/launch-ready", (_request, response) => {
   if (!requireDatabase(response)) return;
   response.json({ ready: true });

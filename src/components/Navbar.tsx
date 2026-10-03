@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       <header
-        id="orbix-header"
+        id="cosmopad-header"
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
             ? "bg-black/90 backdrop-blur-md border-b border-white/10 py-3.5 shadow-2xl"
@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-8 lg:gap-12">
             <a
               href="/"
-              id="orbix-logo-link"
+              id="cosmopad-logo-link"
               className="flex items-center transition-transform hover:opacity-90 active:scale-95"
               aria-label="CosmoPad home"
             >
@@ -390,7 +390,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <a
               id="mobile-nav-twitter"
-              href="https://x.com/OrbixProtocol"
+              href="https://x.com/ponsdotfamily"
               target="_blank"
               rel="noopener noreferrer"
               className="min-h-[44px] flex items-center justify-between text-neutral-300 hover:text-white text-xs font-semibold tracking-wider border-t border-neutral-800/80 pt-3 mt-2"
@@ -400,7 +400,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>FOLLOW ON X / TWITTER</span>
               </span>
               <span className="text-[10px] text-neutral-400 font-mono flex items-center gap-1">
-                @OrbiXProtocol
+                @ponsdotfamily
                 <ArrowUpRight className="w-3 h-3 text-neutral-500" />
               </span>
             </a>

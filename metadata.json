@@ -1,6 +1,6 @@
 {
-  "name": "OrbiX",
-  "description": "Acquiring verifiable stakes, warrants, and economic rights in OrbiX reusable rocket infrastructure, wrapped into liquid onchain products on Robinhood Chain.",
+  "name": "CosmoPad",
+  "description": "An onchain token launchpad on Robinhood Chain where every token becomes a world. Launch, explore, and follow each token's journey through the cosmos.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
