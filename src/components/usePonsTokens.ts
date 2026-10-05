@@ -223,14 +223,48 @@ export const usePonsTokens = (
 
       try {
         const upstreamSort = sort === "all" ? "marketCap" : sort;
-        const pageCount = Math.ceil(MAX_RESULTS / PAGE_SIZE);
-        const feedPages = await Promise.all(
+        const pageCount = Math.min(page, Math.ceil(MAX_RESULTS / PAGE_SIZE));
+        const savedLaunchesRequest = (async () => {
+          try {
+            const response = await fetch(
+              "/api/user-launches?scope=explore",
+              {
+                signal: controller.signal,
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+              },
+            );
+            if (!response.ok) {
+              const failure = (await readJsonResponse<{ error?: string }>(
+                response,
+                "CosmoPad launch API",
+              ).catch(() => null)) as { error?: string } | null;
+              throw new Error(
+                failure?.error ?? "Could not load CosmoPad launches.",
+              );
+            }
+            const data = await readJsonResponse<StoredLaunch[]>(
+              response,
+              "CosmoPad launch API",
+            );
+            if (!Array.isArray(data)) {
+              throw new Error("CosmoPad returned an invalid saved launch list.");
+            }
+            return { launches: data, error: null };
+          } catch (cause) {
+            return {
+              launches: [] as StoredLaunch[],
+              error:
+                cause instanceof Error
+                  ? cause.message
+                  : "Could not load CosmoPad launches.",
+            };
+          }
+        })();
+        const feedPagesRequest = Promise.all(
           Array.from({ length: pageCount }, async (_, index) => {
             const feedPage = index + 1;
-            const pageSize = Math.min(
-              PAGE_SIZE,
-              MAX_RESULTS - index * PAGE_SIZE,
-            );
+            const pageSize = Math.min(PAGE_SIZE, MAX_RESULTS - index * PAGE_SIZE);
             const params = new URLSearchParams({
               explore: "1",
               sort: upstreamSort,
@@ -257,6 +291,11 @@ export const usePonsTokens = (
             );
           }),
         );
+        const [feedPages, savedLaunchesResult] = await Promise.all([
+          feedPagesRequest,
+          savedLaunchesRequest,
+        ]);
+        if (controller.signal.aborted || disposed) return;
         const allLaunches = feedPages.flatMap((data) => {
           if (!Array.isArray(data.active?.items)) {
             throw new Error("PonsFamily returned an invalid launch list.");
@@ -266,43 +305,8 @@ export const usePonsTokens = (
         const launches = allLaunches
           .map(toToken)
           .filter((token): token is Token => token !== undefined);
-        let savedLaunches: StoredLaunch[] = [];
-        let savedLaunchesError: string | null = null;
-        try {
-          const savedResponse = await fetch(
-            "/api/user-launches?scope=explore",
-            {
-              signal: controller.signal,
-              cache: "no-store",
-              headers: { Accept: "application/json" },
-            },
-          );
-          if (!savedResponse.ok) {
-            const failure = (await readJsonResponse<{ error?: string }>(
-              savedResponse,
-              "CosmoPad launch API",
-            ).catch(() => null)) as
-              | { error?: string }
-              | null;
-            throw new Error(
-              failure?.error ?? "Could not load CosmoPad launches.",
-            );
-          }
-          const savedData = await readJsonResponse<StoredLaunch[]>(
-            savedResponse,
-            "CosmoPad launch API",
-          );
-          if (!Array.isArray(savedData)) {
-            throw new Error("CosmoPad returned an invalid saved launch list.");
-          }
-          savedLaunches = savedData;
-        } catch (cause) {
-          if (controller.signal.aborted || disposed) return;
-          savedLaunchesError =
-            cause instanceof Error
-              ? cause.message
-              : "Could not load CosmoPad launches.";
-        }
+        const savedLaunches = savedLaunchesResult.launches;
+        const savedLaunchesError = savedLaunchesResult.error;
 
         const combinedByAddress = new Map(
           launches.map((token) => [token.address.toLowerCase(), token]),
@@ -314,11 +318,30 @@ export const usePonsTokens = (
           combinedByAddress.set(key, live ? { ...live, ...saved } : saved);
         }
         const combined = Array.from(combinedByAddress.values());
+        const start = (page - 1) * PAGE_SIZE;
+        const visibleTokens = sortTokens(combined, sort).slice(
+          start,
+          start + PAGE_SIZE,
+        );
+        const feedTotal = Number(feedPages[0]?.active?.total);
+        const totalCount = Math.min(
+          MAX_RESULTS,
+          Math.max(
+            Number.isFinite(feedTotal) ? feedTotal : launches.length,
+            combined.length,
+          ),
+        );
+        if (!disposed) {
+          setTokens(visibleTokens);
+          setLoading(false);
+          setRefreshing(true);
+          setTotal(totalCount);
+        }
 
         let marketError: string | null = null;
         try {
-          const pairs = await loadDexPairs(combined, controller.signal);
-          const enriched = combined.map((token) => {
+          const pairs = await loadDexPairs(visibleTokens, controller.signal);
+          const enriched = visibleTokens.map((token) => {
             const pair = pairs
               .filter(
                 (candidate) =>
@@ -344,7 +367,7 @@ export const usePonsTokens = (
               url: pair?.url ?? token.url,
             };
           });
-          combined.splice(0, combined.length, ...enriched);
+          visibleTokens.splice(0, visibleTokens.length, ...enriched);
         } catch (cause) {
           if (controller.signal.aborted || disposed) return;
           marketError =
@@ -353,7 +376,7 @@ export const usePonsTokens = (
               : "Could not load supplementary market data.";
         }
 
-        const onChainLaunches = combined.filter(
+        const onChainLaunches = visibleTokens.filter(
           (token) => token.networkLabel === "COSMOPAD LAUNCH",
         );
         const onChainResults = await Promise.allSettled(
@@ -380,7 +403,7 @@ export const usePonsTokens = (
             .filter(Boolean)
             .join(" ");
         }
-        const withOnChainData = combined.map((token) => {
+        const withOnChainData = visibleTokens.map((token) => {
           const state = onChainByAddress.get(token.address.toLowerCase());
           if (!state) return token;
           return {
@@ -462,22 +485,12 @@ export const usePonsTokens = (
           };
         });
 
-        const sorted = sortTokens(valuedTokens, sort).slice(0, MAX_RESULTS);
-        const start = (page - 1) * PAGE_SIZE;
+        const sorted = sortTokens(valuedTokens, sort);
         if (!disposed) {
           setTokens(sorted.slice(start, start + PAGE_SIZE));
           setMarketDataError(marketError);
           setSavedLaunchesError(savedLaunchesError);
-          const feedTotal = Number(feedPages[0]?.active?.total);
-          setTotal(
-            Math.min(
-              MAX_RESULTS,
-              Math.max(
-                Number.isFinite(feedTotal) ? feedTotal : launches.length,
-                combined.length,
-              ),
-            ),
-          );
+          setTotal(totalCount);
           setLastUpdated(Date.now());
         }
       } catch (cause) {

@@ -13,9 +13,16 @@ export const Footer: React.FC = () => (
     className="border-t border-neutral-900 bg-black py-8 text-[11px] uppercase tracking-[0.16em] text-neutral-400"
   >
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-6 sm:px-10 md:flex-row md:items-center md:justify-between lg:px-12">
-      <a href="/" className="flex items-center gap-2 text-white no-underline">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-        <span className="font-bold tracking-[0.22em]">COSMOPAD</span>
+      <a
+        href="/"
+        className="flex items-center text-white no-underline"
+        aria-label="CosmoPad home"
+      >
+        <img
+          src="/cosmopad-logo.svg"
+          alt="CosmoPad — Where tokens become worlds"
+          className="h-8 w-auto"
+        />
       </a>
 
       <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-7 gap-y-3">
@@ -31,7 +38,7 @@ export const Footer: React.FC = () => (
       </nav>
 
       <a
-        href="https://x.com/ponsdotfamily"
+        href="https://x.com/CosmoPadX"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 text-neutral-300 no-underline transition-colors hover:text-emerald-300"
